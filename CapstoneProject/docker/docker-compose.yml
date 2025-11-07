@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: mern-chat-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: mern_chat
+    networks:
+      - mern-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: mern-chat-mongo-express
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://mongo:27017/
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin
+    depends_on:
+      - mongo
+    networks:
+      - mern-network
+    profiles:
+      - tools
+
+  api:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    container_name: mern-chat-api
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      CLIENT_ORIGIN: http://localhost:5173
+      MONGO_URI: mongodb://mongo:27017/mern_chat
+      JWT_SECRET: ${JWT_SECRET:-change_me_in_production}
+      JWT_EXPIRES: 1d
+      COOKIE_SECURE: false
+      PROVIDER_DEFAULT: ${PROVIDER_DEFAULT:-gemini}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      DIALOGFLOW_PROJECT_ID: ${DIALOGFLOW_PROJECT_ID:-}
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-}
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - mern-network
+    volumes:
+      - ../apps/api:/app/apps/api
+      - ./secrets:/secrets:ro
+    profiles:
+      - docker
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+    container_name: mern-chat-web
+    ports:
+      - "5173:80"
+    depends_on:
+      - api
+    networks:
+      - mern-network
+    profiles:
+      - docker
+
+networks:
+  mern-network:
+    driver: bridge
+
+volumes:
+  mongo-data:
+
+
