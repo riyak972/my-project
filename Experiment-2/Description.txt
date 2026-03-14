@@ -47,3 +47,4 @@ The code demonstrates several performance-conscious choices:
 - Minimal DOM structure reduces render complexity
 - Flat CSS selector structure prevents specificity issues
 - Efficient property usage (avoiding expensive properties like blur)
+- Logical grouping of related styles
